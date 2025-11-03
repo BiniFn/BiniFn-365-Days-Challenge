@@ -1,4 +1,4 @@
 <!--
-  © 2025 BiniFn / Albin Gjana. All Rights Reserved.
+  © 2025 BiniFn. All Rights Reserved.
   This code cannot be copied, modified, or redistributed without permission.
 -->
