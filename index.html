@@ -1,0 +1,1024 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>BiniFn — 365 Day Livestream Challenge</title>
+<style>
+/* =========================================================================
+   BiniFn — Single-file full version
+   - Big, explicit, and commented.
+   - UI fully centered and responsive.
+   - Holidays, Codex overlay, LEGO rain, confetti, finale, THE END.
+   - No upload; no visible Easter-egg instructions.
+   ========================================================================= */
+
+/* ----- Theme variables ----- */
+:root{
+  --accent: #ff0000;
+  --accent-dark: #8b0000;
+  --glow: rgba(255,0,0,0.9);
+  --bg-tint: rgba(0,0,0,0.45);
+  --text: #ffffff;
+
+  --max-width: 1200px;
+  --ui-padding: 20px;
+  --card-radius: 16px;
+  --muted: rgba(255,255,255,0.12);
+  --transition-fast: 180ms;
+  --transition-smooth: 360ms;
+}
+
+/* ----- Global reset ----- */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: radial-gradient(ellipse at top, #0b0000 0%, #000 66%);
+  color:var(--text);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  min-height:100vh;
+  margin:0;
+  padding:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:auto;
+}
+
+/* ----- App outer wrapper (keeps everything centered) ----- */
+.app {
+  width:100%;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:var(--ui-padding);
+  position:relative;
+  z-index:0;
+}
+
+/* ----- Background layers ----- */
+.background {
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  background: radial-gradient(ellipse at top, rgba(10,0,0,0.95) 0%, #000 70%);
+}
+.bg-overlay {
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  background: linear-gradient(180deg, rgba(0,0,0,0.0), var(--bg-tint));
+  mix-blend-mode: screen;
+}
+
+/* ----- Particle container (subtle floating dots) ----- */
+.particles { position:fixed; inset:0; z-index:1; pointer-events:none; }
+.particle { position:absolute; width:3px; height:3px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px var(--accent); opacity:0; animation: float 12s linear infinite; will-change: transform, opacity; }
+@keyframes float { 0%{ transform: translateY(0) translateX(0); opacity:0 } 8%{ opacity:.8 } 92%{ opacity:.6 } 100%{ transform: translateY(-110vh) translateX(80px); opacity:0 } }
+
+/* ----- Main container colors & layout ----- */
+.container {
+  z-index:2;
+  width:100%;
+  max-width:var(--max-width);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:28px;
+  padding:28px;
+  box-sizing:border-box;
+  flex-direction:column;
+}
+
+/* ----- Header ----- */
+.header{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:8px;
+  width:100%;
+}
+.logo {
+  font-weight:900;
+  font-size:clamp(2.2rem,8vw,4.6rem);
+  letter-spacing:0.06em;
+  color:var(--text);
+  text-shadow: 0 0 8px var(--accent), 0 0 18px var(--accent), 0 0 26px var(--accent-dark);
+  cursor:default;
+  user-select:none;
+}
+.subtitle {
+  color:#ff6666;
+  text-transform:uppercase;
+  font-weight:300;
+  letter-spacing:0.22em;
+  font-size:clamp(.8rem,2vw,1rem);
+}
+
+/* ----- Card with Day display ----- */
+.card {
+  width:min(720px, 96%);
+  max-width:720px;
+  border-radius:var(--card-radius);
+  padding:24px;
+  background: linear-gradient(135deg, rgba(139,0,0,0.18), rgba(0,0,0,0.55));
+  border:2px solid var(--accent);
+  box-shadow: 0 8px 34px rgba(0,0,0,0.6);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+}
+.day-label { color:var(--accent); text-transform:uppercase; letter-spacing:.14em; font-weight:700; }
+.day-display {
+  font-size:clamp(2.6rem,9vw,4.6rem);
+  font-weight:900;
+  color:var(--text);
+  text-shadow: 0 0 18px var(--accent), 0 0 36px var(--accent);
+  transition: transform var(--transition-fast) ease, text-shadow var(--transition-fast) ease;
+}
+
+/* ----- Progress bar ----- */
+.progress-container { width:100%; margin-top:6px; }
+.progress-label { display:flex; justify-content:space-between; width:100%; color:var(--accent); font-weight:700; font-size:.95rem; }
+.progress-bar { margin-top:8px; height:12px; width:100%; background: rgba(255,0,0,0.08); border-radius:999px; overflow:hidden; border:1px solid rgba(255,0,0,0.08); }
+.progress-fill { height:100%; width:0; background: linear-gradient(90deg,var(--accent-dark),var(--accent)); box-shadow: 0 0 12px var(--glow); transition: width .9s cubic-bezier(.1,.9,.2,1); border-radius:999px; }
+
+/* ----- Enter button ----- */
+.controls { width:100%; display:flex; align-items:center; justify-content:center; margin-top:16px; gap:12px; }
+.next-button {
+  padding:14px 44px;
+  border-radius:999px;
+  background: linear-gradient(135deg,var(--accent-dark),var(--accent));
+  border:2px solid var(--accent);
+  color:#fff; font-weight:900; letter-spacing:.08em;
+  cursor:pointer; box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+.next-button:hover { transform:translateY(-3px); box-shadow: 0 16px 40px rgba(0,0,0,0.55); }
+
+/* ----- Hidden content area (revealed on Enter) ----- */
+#mainContent {
+  width:100%;
+  max-width:800px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:12px;
+  margin-top:10px;
+  opacity:0;
+  pointer-events:none;
+  transform: translateY(8px);
+  transition: opacity .7s ease, transform .7s ease;
+}
+#mainContent.show {
+  opacity:1; pointer-events:auto; transform:translateY(0);
+}
+
+/* ----- Links and playlist ----- */
+.links { display:flex; flex-direction:column; align-items:center; gap:12px; width:100%; }
+.link-button {
+  width:min(420px, 92%);
+  text-decoration:none;
+  color:white;
+  background: linear-gradient(135deg, rgba(139,0,0,0.32), rgba(0,0,0,0.36));
+  border:2px solid var(--accent);
+  padding:12px 18px; border-radius:999px; font-weight:800; text-align:center;
+  box-shadow:0 8px 26px rgba(0,0,0,0.45);
+}
+
+/* ----- Challenge badge ----- */
+.challenge-badge { margin-top:8px; padding:10px 16px; border-radius:12px; background: linear-gradient(135deg, rgba(139,0,0,0.22), rgba(0,0,0,0.5)); color:#fff; font-weight:800; border:1px solid rgba(255,0,0,0.18); }
+
+/* ----- Playlist link styling ----- */
+.playlist-btn { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:12px; text-decoration:none; color:white; font-weight:900; background: linear-gradient(90deg,#FF0000,#ff4b4b); border:2px solid rgba(255,255,255,0.06); box-shadow:0 10px 30px rgba(0,0,0,0.45); }
+
+/* ----- Codex overlay ----- */
+.overlay { position:fixed; inset:0; z-index:9999; display:none; align-items:center; justify-content:center; background: rgba(0,0,0,0.78); backdrop-filter: blur(6px); }
+.overlay.show { display:flex; }
+.codex-card { width:min(1180px, 96%); max-width:1180px; background: linear-gradient(135deg, rgba(20,20,20,0.96), rgba(10,10,10,0.94)); border-radius:14px; padding:28px; box-shadow: 0 30px 80px rgba(0,0,0,0.6); position:relative; overflow:hidden; }
+.codex-heading { font-size:clamp(1.6rem,3.6vw,3rem); font-weight:900; color:#fff; margin-bottom:12px; text-align:center; }
+.codex-logo { display:block; margin:0 auto 12px; max-width:760px; width:86%; height:auto; filter: drop-shadow(0 12px 40px rgba(0,0,0,0.6)); }
+.logo-rain { position:absolute; inset:0; pointer-events:none; z-index:2; }
+
+/* Close button on codex */
+.codex-close { position:absolute; top:16px; right:16px; z-index:10; background:#111; color:#fff; border:1px solid rgba(255,255,255,0.06); padding:10px 12px; border-radius:8px; cursor:pointer; font-weight:800; }
+
+/* ----- Finale overlay (Day >= 365) ----- */
+.finale-overlay { position:fixed; inset:0; z-index:12000; display:none; align-items:center; justify-content:center; background: rgba(0,0,0,0.88); backdrop-filter: blur(6px); }
+.finale-overlay.show { display:flex; }
+.finale-logo { font-weight:900; color:#FFD700; text-shadow: 0 0 32px rgba(255,215,0,0.9), 0 0 80px rgba(255,215,0,0.25); font-size:clamp(3.2rem,10vw,7.2rem); margin-bottom:12px; text-align:center; }
+.finale-banner { padding:12px 20px; border-radius:12px; background:linear-gradient(90deg, rgba(255,215,0,0.04), rgba(255,240,180,0.02)); color:#fff; font-weight:900; text-align:center; }
+
+/* ----- THE END overlay (Day >= 400) ----- */
+.the-end-overlay { position:fixed; inset:0; z-index:13000; display:none; align-items:center; justify-content:center; background: rgba(0,0,0,0.98); color:white; padding:24px; text-align:center; }
+.the-end-overlay.show { display:flex; }
+
+/* ----- Confetti pieces (DOM-based) ----- */
+.confetti-piece { position:fixed; z-index:13100; width:10px; height:14px; border-radius:2px; will-change: transform, opacity; }
+
+/* ----- Invisible corner hotspot ----- */
+.corner-hotspot { position:fixed; right:6px; bottom:6px; width:56px; height:56px; z-index:999; opacity:0; }
+
+/* ----- Responsive tweaks ----- */
+@media (max-width:880px){
+  .card { padding:18px; }
+  .next-button { padding:12px 28px; font-size:0.95rem; }
+  .logo { font-size: clamp(1.8rem,12vw,3.6rem); }
+}
+
+/* Reduced motion -- respect user preference */
+@media (prefers-reduced-motion: reduce){
+  .particle, .logo-rain, .overlay, .finale-overlay, .day-display { animation:none!important; transition:none!important; }
+}
+</style>
+</head>
+<body>
+  <!-- background layers -->
+  <div class="background" aria-hidden="true"></div>
+  <div class="bg-overlay" aria-hidden="true"></div>
+  <div class="particles" id="particles" aria-hidden="true"></div>
+
+  <!-- Main app -->
+  <div class="app" role="application" aria-label="BiniFn challenge app">
+    <div class="container">
+
+      <!-- header -->
+      <div class="header" role="banner">
+        <div class="logo" id="logoTitle" tabindex="0" title="BiniFn">BiniFn</div>
+        <div class="subtitle">Gamer • Creator • Programmer</div>
+      </div>
+
+      <!-- main card -->
+      <div class="card" role="region" aria-label="Challenge progress">
+        <div class="day-label">Challenge Progress</div>
+        <div class="day-display" id="dayDisplay">Day 1</div>
+
+        <div class="progress-container" role="group" aria-label="progress">
+          <div class="progress-label"><span id="progressText">0%</span><span id="progressTotal">365 Days</span></div>
+          <div class="progress-bar" aria-hidden="true"><div class="progress-fill" id="progressFill" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div></div>
+        </div>
+
+        <div class="controls" aria-hidden="false">
+          <button class="next-button" id="nextBtn" aria-expanded="false">Enter</button>
+        </div>
+      </div>
+
+      <!-- hidden main content, revealed after pressing Enter -->
+      <div id="mainContent" aria-hidden="true">
+        <div class="links">
+          <a id="linkWebsite" class="link-button" href="https://guns.lol/binifn" target="_blank" rel="noopener noreferrer">🌐 Visit Website</a>
+          <a id="linkYoutube" class="link-button" href="https://youtube.com/@binifn.x" target="_blank" rel="noopener noreferrer">📺 YouTube Channel</a>
+        </div>
+
+        <div class="challenge-badge" aria-hidden="false">🎮 365 Day Livestream Challenge
+          <div style="font-size:.85rem; opacity:.95; margin-top:6px; font-weight:700">Started: November 7th, 2025</div>
+        </div>
+
+        <a id="playlistButton" class="playlist-btn" href="https://youtube.com/playlist?list=PLuHsYM1bT176r4owlQ0SIAcGy_NweH8Xm" target="_blank" rel="noopener noreferrer" style="margin-top:12px;">
+          <svg width="18" height="12" viewBox="0 0 18 12" aria-hidden="true" style="display:block"><rect width="18" height="12" rx="2" fill="#fff"></rect><polygon points="7,3 12,6 7,9" fill="#FF0000"></polygon></svg>
+          <span>🎥 Watch the Journey</span>
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Codex overlay: hidden overlay that shows logo and canvas for lego rain -->
+  <div class="overlay" id="codexOverlay" role="dialog" aria-hidden="true" aria-modal="true">
+    <div class="codex-card" role="document" aria-label="Codex reveal">
+      <button class="codex-close" id="codexCloseBtn" title="Close">Close</button>
+      <div style="text-align:center;">
+        <div id="codexHeading" class="codex-heading">💽 Codex Collections — Season 2</div>
+        <!-- image source is a CDN url; if you'd like it embedded base64 say so -->
+        <img id="codexLogo" class="codex-logo" alt="Codex Logo"
+             src="https://cdn.discordapp.com/attachments/1383490758539087904/1437190455828811978/IMG-20251109-WA0061.jpg?ex=6912576a&amp;is=691105ea&amp;hm=2ada0faf4ee48925c6b22779dd14e1c361d9f8969449c62c4f50eef466e98c1d" />
+      </div>
+      <!-- canvas that will render the LEGO stacking rain -->
+      <canvas id="logoRain" class="logo-rain" aria-hidden="true"></canvas>
+    </div>
+  </div>
+
+  <!-- Finale overlay (shown when day >= 365) -->
+  <div class="finale-overlay" id="finaleOverlay" role="dialog" aria-hidden="true" aria-modal="true">
+    <div style="max-width:1100px; width:92%; padding:18px; text-align:center;">
+      <div id="finaleLogo" class="finale-logo">BiniFn</div>
+      <div id="finaleBanner" class="finale-banner">🎉 365 Days Complete — BiniFn Challenge Master Unlocked!
+        <div style="margin-top:12px">
+          <a id="finalePlaylistBtn" class="playlist-btn" href="https://youtube.com/playlist?list=PLuHsYM1bT176r4owlQ0SIAcGy_NweH8Xm" target="_blank" rel="noopener noreferrer" style="padding:10px 14px;">
+            <svg width="14" height="10" viewBox="0 0 14 10" aria-hidden="true" style="display:block"><rect width="14" height="10" rx="2" fill="#fff"></rect><polygon points="5,2 10,5 5,8" fill="#FF0000"></polygon></svg>
+            <span>Watch Playlist</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- THE END overlay (Day >= 400) -->
+  <div class="the-end-overlay" id="theEndOverlay" role="dialog" aria-hidden="true" aria-modal="true">
+    <div style="max-width:940px; padding:24px; text-align:center;">
+      <h1 style="font-size:clamp(2.4rem,8vw,6rem); margin-bottom:12px;">THE END</h1>
+      <p style="font-size:1.25rem;">Thank you for the journey 💫</p>
+    </div>
+  </div>
+
+  <!-- invisible corner hotspot (triple click triggers the Codex) -->
+  <div class="corner-hotspot" id="cornerHotspot" title=""></div>
+
+<script>
+/* =========================================================================
+   Big JS section
+   - Many comments for clarity
+   - Holidays, particle engine, Codex lego rain, confetti, finale logic
+   ========================================================================= */
+
+/* ---------- Basic preferences ---------- */
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0 || window.innerWidth < 768;
+
+/* ---------- Flags (ensure one-time behavior) ---------- */
+let codexEffectsTriggered = false; // lego/confetti after codex close — only once
+let finaleTriggered = false;       // finale (Day >= 365) — only once
+let theEndShown = false;           // THE END (Day >= 400) — only once
+
+/* ---------- Utility functions ---------- */
+
+/**
+ * Simple helper: convert hex color to rgba string with alpha
+ */
+function hexToRgba(hex, alpha = 1) {
+  if(!hex) return `rgba(0,0,0,${alpha})`;
+  hex = hex.replace('#', '');
+  if(hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+  const r = parseInt(hex.substr(0,2), 16);
+  const g = parseInt(hex.substr(2,2), 16);
+  const b = parseInt(hex.substr(4,2), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+/* ---------- Easter date calculation (Anon Gregorian algorithm) ---------- */
+function easterDate(year) {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19*a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const L = (32 + 2*e + 2*i - h - k) % 7;
+  const m = Math.floor((a + 11*h + 22*L) / 451);
+  const month = Math.floor((h + L - 7*m + 114) / 31);
+  const day = ((h + L - 7*m + 114) % 31) + 1;
+  return { month, day };
+}
+function monthName(m) {
+  return ['','January','February','March','April','May','June','July','August','September','October','November','December'][m] || '';
+}
+
+/* ---------- Build an extensive holidays map for a year ---------- */
+function buildSpecialDaysForYear(year) {
+  // Map keyed by 'M-D' (e.g. '12-25')
+  const map = new Map();
+
+  // Static holidays (a long list to be thorough)
+  const add = (m,d,emoji,text,primary,secondary,glow) => {
+    map.set(`${m}-${d}`, { emoji, text, primary, secondary, glow });
+  };
+
+  // Common holidays (examples)
+  add(1,1,'🎉','New Year\'s Day','#FFD700','#FFA500','#FFD700');
+  add(1,6,'🎄','Epiphany (Orthodox)','#228B22','#DC143C','#228B22');
+  add(1,11,'🇦🇱','Albanian Republic Day','#FF0000','#000000','#FF0000');
+  add(2,14,'💘','Valentine\'s Day','#FF1493','#FF69B4','#FF1493');
+  add(3,8,'👩','International Women\'s Day','#FF69B4','#FFB6C1','#FF69B4');
+  add(3,17,'☘️','St. Patrick\'s Day','#00FF00','#228B22','#00FF00');
+  add(4,1,'🤡','April Fools\' Day','#9370DB','#BA55D3','#9370DB');
+  add(4,22,'🌍','Earth Day','#2E8B57','#98FB98','#2E8B57');
+  add(5,1,'⚒️','International Labour Day','#DC143C','#FFD700','#DC143C');
+  add(5,9,'🎖️','Victory Day (example)','#FFD700','#FF8C00','#FFD700');
+  add(6,6,'🕌','Eid al-Adha (approx)','#228B22','#FFD700','#228B22');
+  add(7,4,'🇺🇸','Independence Day (USA)','#0000FF','#FF0000','#0000FF');
+  add(10,31,'🎃','Halloween','#FF8C00','#8B008B','#FF8C00');
+  add(11,7,'🎮','Challenge Launch Day','#FF4500','#FF8C00','#FF4500');
+  add(11,28,'🇦🇱','Albanian Independence Day','#FF0000','#000000','#FF0000');
+  add(12,24,'🎄','Christmas Eve','#228B22','#DC143C','#228B22');
+  add(12,25,'🎅','Christmas Day','#DC143C','#228B22','#DC143C');
+  add(12,31,'🎊','New Year\'s Eve','#FFD700','#FF1493','#FFD700');
+
+  // Add computed Easter (Sunday + Monday)
+  const e = easterDate(year);
+  add(e.month, e.day, '🐣', `Easter Sunday (${monthName(e.month)} ${e.day})`, '#FFD700','#FF69B4','#FFD700');
+  const em = new Date(year, e.month-1, e.day+1);
+  add(em.getMonth()+1, em.getDate(), '🌷', `Easter Monday (${monthName(em.getMonth()+1)} ${em.getDate()})`, '#FFECB3','#FFCCBC','#FFB6C1');
+
+  // Return the map
+  return map;
+}
+
+/* ---------- Apply a theme for today (if holiday exists) ---------- */
+function applyThemeForToday() {
+  const today = new Date();
+  const key = `${today.getMonth()+1}-${today.getDate()}`;
+  const map = buildSpecialDaysForYear(today.getFullYear());
+  const info = map.get(key) || null;
+  if(!info) return; // no theme for today
+
+  // set CSS custom properties for accent colors
+  document.documentElement.style.setProperty('--accent', info.primary);
+  document.documentElement.style.setProperty('--accent-dark', info.secondary);
+  document.documentElement.style.setProperty('--glow', info.glow || info.primary);
+  document.documentElement.style.setProperty('--bg-tint', hexToRgba(info.primary, 0.22));
+
+  // Update some UI elements directly for immediate effect
+  const logo = document.getElementById('logoTitle'); if(logo) logo.style.textShadow = `0 0 10px ${info.glow}, 0 0 20px ${info.glow}, 0 0 30px ${info.secondary}`;
+  const pf = document.getElementById('progressFill'); if(pf) pf.style.background = `linear-gradient(90deg, ${info.secondary}, ${info.primary})`;
+  const card = document.querySelector('.card'); if(card) card.style.borderColor = info.primary;
+  recolorParticles(info.primary, info.glow);
+  // add a badge in code if you want (optional)
+  // (omitted on-screen badge to stay minimal here)
+}
+
+/* ---------- Particle generation (background little dots) ---------- */
+function createParticles(){
+  const container = document.getElementById('particles');
+  if(!container) return;
+  container.innerHTML = '';
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const baseCount = isMobile ? 12 : 28;
+  const count = prefersReduced ? Math.round(baseCount * 0.35) : baseCount;
+  for(let i=0;i<count;i++){
+    const el = document.createElement('div'); el.className = 'particle';
+    el.style.left = Math.random()*100 + '%';
+    el.style.top = (75 + Math.random()*25) + '%';
+    el.style.animationDelay = (Math.random()*12) + 's';
+    el.style.animationDuration = (10 + Math.random()*10) + 's';
+    el.style.transform = `translateX(${(Math.random()-0.5)*80}px)`;
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#ff0000';
+    el.style.background = accent;
+    el.style.boxShadow = `0 0 8px ${accent}`;
+    container.appendChild(el);
+  }
+}
+function recolorParticles(color, glow) {
+  document.querySelectorAll('.particle').forEach(el => {
+    el.style.background = color;
+    el.style.boxShadow = `0 0 8px ${glow || color}`;
+  });
+}
+
+/* ---------- Challenge day calculation ---------- */
+function calculateChallengeDay(){
+  // Start date anchored to Nov 7, 2025 (local midnight)
+  const startDate = new Date('2025-11-07T00:00:00');
+  const today = new Date();
+  startDate.setHours(0,0,0,0); today.setHours(0,0,0,0);
+  const diff = Math.floor((today - startDate) / (1000*60*60*24));
+  return diff >= 0 ? diff + 1 : 1;
+}
+function updateDayDisplay(){
+  const day = calculateChallengeDay();
+  const percent = ((day/365) * 100);
+  const dayEl = document.getElementById('dayDisplay');
+  const progText = document.getElementById('progressText');
+  const pf = document.getElementById('progressFill');
+  if(dayEl) dayEl.textContent = `Day ${day}`;
+  if(progText) progText.textContent = `${percent.toFixed(1)}%`;
+  if(pf) {
+    setTimeout(()=> { pf.style.width = Math.min(percent,100) + '%'; pf.setAttribute('aria-valuenow', Math.round(percent)); }, 90);
+  }
+
+  // trigger finale if we've reached day >= 365
+  if(day >= 365) triggerFinaleOnce();
+
+  // show THE END on day >= 400
+  if(day >= 400 && !theEndShown) showTheEnd();
+}
+
+/* ---------- Enter button behaviour (reveals main content) ---------- */
+const nextBtn = document.getElementById('nextBtn');
+const mainContent = document.getElementById('mainContent');
+if(nextBtn) nextBtn.addEventListener('click', ()=> {
+  // hide button with a quick fade then reveal content
+  nextBtn.setAttribute('aria-expanded','true');
+  nextBtn.style.transition = 'opacity 320ms ease, transform 320ms ease';
+  nextBtn.style.opacity = '0';
+  nextBtn.style.transform = 'translateY(6px) scale(.98)';
+  setTimeout(()=> {
+    nextBtn.style.display = 'none';
+    if(mainContent){
+      mainContent.classList.add('show');
+      mainContent.setAttribute('aria-hidden','false');
+    }
+  }, 340);
+});
+
+/* ---------- Codex overlay (open/close + lego rain) ---------- */
+const codexOverlay = document.getElementById('codexOverlay');
+const codexCloseBtn = document.getElementById('codexCloseBtn');
+const codexLogoEl = document.getElementById('codexLogo');
+const logoCanvas = document.getElementById('logoRain');
+const codexCtx = logoCanvas && logoCanvas.getContext ? logoCanvas.getContext('2d') : null;
+
+/* Resize canvas to overlay size */
+function resizeCodex(){
+  if(!codexCtx) return;
+  const rect = codexOverlay.getBoundingClientRect();
+  logoCanvas.width = Math.max(300, Math.floor(rect.width));
+  logoCanvas.height = Math.max(200, Math.floor(rect.height));
+}
+
+/* Open Codex: show overlay and start rain using the logo */
+function openCodex(){
+  if(!codexOverlay) return;
+  codexOverlay.classList.add('show');
+  codexOverlay.setAttribute('aria-hidden','false');
+  resizeCodex();
+
+  // Attempt to load the provided image for use as rainy tiles.
+  const imgSrc = codexLogoEl && codexLogoEl.getAttribute('src') ? codexLogoEl.getAttribute('src') : '';
+  if(imgSrc){
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = ()=> startLogoRain(img);
+    img.onerror = ()=> startLogoRain(null);
+    img.src = imgSrc;
+  } else {
+    startLogoRain(null);
+  }
+}
+
+/* Close Codex: stop the rain, hide overlay. Then run the one-time main celebration (if not triggered). */
+function closeCodex(){
+  if(!codexOverlay) return;
+  codexOverlay.classList.remove('show');
+  codexOverlay.setAttribute('aria-hidden','true');
+  stopLogoRain();
+}
+
+/* Hook the close button to close codex and run single-time effects */
+if(codexCloseBtn){
+  codexCloseBtn.addEventListener('click', ()=> {
+    closeCodex();
+    if(!codexEffectsTriggered){
+      codexEffectsTriggered = true;
+      // After closing, run a short lego burst + confetti on main page
+      startLogoRainOnceShort();
+    }
+  });
+}
+
+/* ---------- LEGO stacking engine (canvas) ---------- */
+
+/*
+  Approach:
+  - Maintain a falling list and a placed list.
+  - Each falling brick has x,y,w,h,vy,rotation,color,maybe logo.
+  - When a falling brick reaches the top of the stack in its columns, we place it and update column heights.
+  - When columns are tall enough to fill the canvas, we consider it "filled".
+*/
+let codexRain = {
+  running: false,
+  columns: [],
+  unit: 18,
+  placed: [],
+  falling: [],
+  spawnId: null,
+  anim: null,
+  spawnRate: 36
+};
+
+/* Basic rounded rect utility for canvas drawing */
+function roundRect(ctx, x, y, w, h, r){
+  if(w < 2*r) r = w/2;
+  if(h < 2*r) r = h/2;
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+/* Draw a placed brick with studs */
+function drawPlaced(b){
+  if(!codexCtx) return;
+  codexCtx.save();
+  codexCtx.translate(b.x + b.w/2, b.y + b.h/2);
+  codexCtx.fillStyle = b.color || '#e41e26';
+  roundRect(codexCtx, -b.w/2, -b.h/2, b.w, b.h, Math.max(2, b.h * 0.18));
+  codexCtx.fill();
+
+  // studs
+  const studCount = Math.max(1, Math.floor(b.w / 18));
+  const studRadius = Math.max(3, Math.min(6, b.h * 0.16));
+  codexCtx.fillStyle = 'rgba(255,255,255,0.06)';
+  for(let s=0; s<studCount; s++){
+    const sx = -b.w/2 + (s + 0.5) * (b.w / studCount);
+    const sy = -b.h/2 + studRadius + 1;
+    codexCtx.beginPath(); codexCtx.arc(sx, sy, studRadius, 0, Math.PI*2); codexCtx.fill();
+  }
+
+  codexCtx.restore();
+}
+
+/* Draw a falling brick (can be simple rectangle or logo tile) */
+function drawFalling(f){
+  if(!codexCtx) return;
+  codexCtx.save();
+  codexCtx.translate(f.x + f.w/2, f.y + f.h/2);
+  codexCtx.rotate(f.rotation || 0);
+  if(f.logo){
+    try {
+      const tileW = Math.min(f.w, 48);
+      const tileH = Math.min(f.h, 48);
+      codexCtx.drawImage(f.logo, -tileW/2, -tileH/2, tileW, tileH);
+    } catch(e) {
+      codexCtx.fillStyle = f.color || '#3498db';
+      roundRect(codexCtx, -f.w/2, -f.h/2, f.w, f.h, Math.max(2, f.h*0.18));
+      codexCtx.fill();
+    }
+  } else {
+    codexCtx.fillStyle = f.color || '#3498db';
+    roundRect(codexCtx, -f.w/2, -f.h/2, f.w, f.h, Math.max(2, f.h*0.18));
+    codexCtx.fill();
+  }
+
+  // studs
+  const studCount = Math.max(1, Math.floor(f.w / 18));
+  const studRadius = Math.max(3, Math.min(6, f.h * 0.16));
+  codexCtx.fillStyle = 'rgba(255,255,255,0.06)';
+  for(let s=0; s<studCount; s++){
+    const sx = -f.w/2 + (s + 0.5) * (f.w / studCount);
+    const sy = -f.h/2 + studRadius + 1;
+    codexCtx.beginPath(); codexCtx.arc(sx, sy, studRadius, 0, Math.PI*2); codexCtx.fill();
+  }
+
+  codexCtx.restore();
+}
+
+/* Start the rain: spawn bricks periodically and animate */
+function startLogoRain(logoImage){
+  if(!codexCtx) return;
+  stopLogoRain();
+
+  resizeCodex();
+  codexRain.running = true;
+  codexRain.placed = [];
+  codexRain.falling = [];
+  codexRain.unit = Math.max(12, Math.floor(logoCanvas.width / 60));
+  const columnsCount = Math.max(12, Math.floor(logoCanvas.width / codexRain.unit));
+  codexRain.columns = new Array(columnsCount).fill(0);
+
+  const colors = ['#e41e26','#f1c40f','#3498db','#2ecc71','#8e44ad','#f39c12','#16a085'];
+
+  codexRain.spawnId = setInterval(() => {
+    if(!codexRain.running) return;
+    const wUnits = 1 + Math.floor(Math.random()*3);
+    const w = Math.min(wUnits, codexRain.columns.length) * codexRain.unit - 2;
+    const h = Math.max(8, Math.floor(codexRain.unit * (0.28 + Math.random()*0.5)));
+    const x = Math.random() * (logoCanvas.width - w);
+    const color = colors[Math.floor(Math.random()*colors.length)];
+    const brick = { x, y: -h - (Math.random()*80), w, h, color, vy: 2 + Math.random()*3, rotation:(Math.random()-0.5)*0.06 };
+
+    // Occasionally use the codex logo as a tile
+    if(logoImage && Math.random() < 0.08) brick.logo = logoImage;
+
+    codexRain.falling.push(brick);
+  }, Math.max(20, codexRain.spawnRate));
+
+  function animate(){
+    if(!codexRain.running) return;
+    codexCtx.clearRect(0,0,logoCanvas.width,logoCanvas.height);
+
+    // draw placed bricks
+    for(const b of codexRain.placed) drawPlaced(b);
+
+    // update falling bricks
+    for(let i = codexRain.falling.length - 1; i >= 0; i--){
+      const f = codexRain.falling[i];
+      f.vy += 0.08;
+      f.y += f.vy;
+      f.x += Math.sin(f.y * 0.012) * 0.3;
+      f.rotation += (f.rotation * 0.02);
+
+      const leftCol = Math.max(0, Math.floor(f.x / codexRain.unit));
+      const rightCol = Math.min(codexRain.columns.length - 1, Math.floor((f.x + f.w) / codexRain.unit));
+
+      let maxh = 0;
+      for(let c = leftCol; c <= rightCol; c++) maxh = Math.max(maxh, codexRain.columns[c]);
+      const surfaceY = logoCanvas.height - maxh;
+
+      if(f.y + f.h >= surfaceY){
+        // place it
+        const placedY = surfaceY - f.h;
+        const placed = { x: Math.max(0, Math.min(logoCanvas.width - f.w, Math.round(f.x))), y: Math.round(placedY), w: f.w, h: f.h, color: f.color };
+        codexRain.placed.push(placed);
+        for(let c = leftCol; c <= rightCol; c++) codexRain.columns[c] += f.h;
+        codexRain.falling.splice(i, 1);
+      } else {
+        drawFalling(f);
+      }
+    }
+
+    // draw falling bricks after updates
+    // (we already drew them above while updating)
+
+    // check if canvas is essentially filled
+    const allFilled = codexRain.columns.every(h => h >= logoCanvas.height - 6);
+    if(allFilled){
+      // once the canvas fills, trigger confetti and auto-stop
+      confettiExplosion(false);
+      activateCinematicPulse(true);
+      stopLogoRain();
+      for(const b of codexRain.placed) drawPlaced(b);
+      return;
+    }
+
+    codexRain.anim = requestAnimationFrame(animate);
+  }
+  codexRain.anim = requestAnimationFrame(animate);
+
+  // safety auto-stop after 35s to avoid runaway
+  setTimeout(()=> {
+    if(codexRain.running){
+      confettiExplosion(false);
+      activateCinematicPulse(true);
+      stopLogoRain();
+    }
+  }, 35000);
+}
+
+/* Stop the rain engine and clear */
+function stopLogoRain(){
+  codexRain.running = false;
+  if(codexRain.spawnId){ clearInterval(codexRain.spawnId); codexRain.spawnId = null; }
+  if(codexRain.anim){ cancelAnimationFrame(codexRain.anim); codexRain.anim = null; }
+  if(codexCtx) codexCtx.clearRect(0,0,logoCanvas.width,logoCanvas.height);
+}
+
+/* Short lego burst on the main page (DOM bricks) used once after codex closes */
+function startLogoRainOnceShort(){
+  if(prefersReducedMotion) return;
+  const count = isMobile ? 12 : 28;
+  for(let i=0;i<count;i++){
+    const el = document.createElement('div');
+    el.style.position = 'fixed';
+    el.style.left = Math.random()*86 + 6 + 'vw';
+    el.style.top = '-40px';
+    el.style.zIndex = 11000;
+    const w = 12 + Math.random()*28;
+    el.style.width = w + 'px';
+    el.style.height = (w * 0.6) + 'px';
+    el.style.background = ['#e41e26','#f1c40f','#3498db','#2ecc71','#8e44ad','#f39c12'][Math.floor(Math.random()*6)];
+    el.style.borderRadius = '4px';
+    el.style.boxShadow = '0 6px 18px rgba(0,0,0,0.4)';
+    el.style.transform = `rotate(${Math.random()*40-20}deg)`;
+    document.body.appendChild(el);
+    const duration = 1600 + Math.random()*1400;
+    el.animate([{ transform: el.style.transform, opacity:1 }, { transform: `translateY(${window.innerHeight + 160}px) rotate(${Math.random()*720-360}deg)`, opacity:0 }], { duration, easing:'cubic-bezier(.2,.8,.2,1)' });
+    setTimeout(()=> el.remove(), duration + 80);
+  }
+  // small confetti after the bricks
+  setTimeout(()=> confettiExplosion(false), 900);
+}
+
+/* Cinematic pulse (quick screen flash) */
+function activateCinematicPulse(louder=false){
+  const pulse = document.createElement('div');
+  pulse.style.position = 'fixed';
+  pulse.style.inset = 0;
+  pulse.style.zIndex = 10002;
+  pulse.style.pointerEvents = 'none';
+  pulse.style.background = louder ? 'radial-gradient(circle at 50% 40%, rgba(255,255,255,0.06), rgba(0,0,0,0))' : 'radial-gradient(circle at 50% 40%, rgba(255,255,255,0.03), rgba(0,0,0,0))';
+  document.body.appendChild(pulse);
+  setTimeout(()=> { pulse.style.transition = 'opacity .9s'; pulse.style.opacity = '0'; setTimeout(()=> pulse.remove(), 950); }, 120);
+}
+
+/* ---------- Confetti explosion (DOM-based) ---------- */
+function confettiExplosion(finale=false){
+  if(prefersReducedMotion) return;
+  const count = (finale ? 300 : 120) + (isMobile ? -40 : 0);
+  const colors = finale ? ['#FFD700','#FFD166','#FFB700','#FFDA6A'] : ['#e41e26','#f1c40f','#3498db','#2ecc71','#8e44ad','#f39c12'];
+  const pieces = [];
+  for(let i=0;i<count;i++){
+    const el = document.createElement('div'); el.className = 'confetti-piece';
+    const w = 6 + Math.round(Math.random()*12), h = 8 + Math.round(Math.random()*10);
+    el.style.width = w + 'px';
+    el.style.height = h + 'px';
+    el.style.left = (50 + (Math.random()-0.5)*80) + 'vw';
+    el.style.top = (20 + Math.random()*20) + 'vh';
+    const color = colors[Math.floor(Math.random()*colors.length)];
+    el.style.background = color;
+    el.style.transform = `translate3d(0,0,0) rotate(${Math.random()*360}deg)`;
+    document.body.appendChild(el);
+    const vx = (Math.random()-0.5) * (finale ? 24 : 20);
+    const vy = -6 - Math.random() * (finale ? 12 : 8);
+    const vr = (Math.random()-0.5) * 0.8;
+    pieces.push({ el, x: el.offsetLeft, y: el.offsetTop, vx, vy, vr, life: 0 });
+  }
+  const gravity = finale ? 0.7 : 0.55;
+  function tick(){
+    for(let i=pieces.length-1;i>=0;i--){
+      const p = pieces[i];
+      p.vy += gravity * (finale ? 0.45 : 0.4);
+      p.x += p.vx; p.y += p.vy;
+      p.vx *= 0.995; p.vy *= 0.998;
+      p.vr += (Math.random() - 0.5) * 0.02;
+      p.life += 1;
+      p.el.style.transform = `translate3d(${p.x}px,${p.y}px,0) rotate(${p.vr * p.life}rad)`;
+      p.el.style.opacity = Math.max(0, 1 - p.life / (finale ? 200 : 160));
+      if(p.life > (finale ? 260 : 220) || p.y > window.innerHeight + 120){
+        p.el.remove(); pieces.splice(i,1);
+      }
+    }
+    if(pieces.length) requestAnimationFrame(tick);
+  }
+  tick();
+}
+
+/* ---------- Secret corner & keyboard codes ---------- */
+const corner = document.getElementById('cornerHotspot');
+let cornerClicks = 0;
+if(corner){
+  corner.addEventListener('click', () => {
+    cornerClicks++;
+    if(cornerClicks >= 3){
+      openCodex();
+      cornerClicks = 0;
+    }
+    setTimeout(()=> { cornerClicks = 0; }, 1500);
+  });
+}
+
+// keyboard CODEX -> open codex
+const keyBuffer = [];
+document.addEventListener('keydown', (e) => {
+  keyBuffer.push(e.key.toUpperCase());
+  if(keyBuffer.length > 60) keyBuffer.shift();
+  const combo = keyBuffer.join('');
+  if(combo.includes('CODEX')) openCodex();
+});
+
+/* ---------- Logo click fun (kept hidden behaviors) ---------- */
+let logoClicks = 0, logoClickTimer = null;
+const logoEl = document.getElementById('logoTitle');
+if(logoEl){
+  logoEl.addEventListener('click', () => {
+    logoClicks++;
+    if(logoClicks === 10){
+      flashMessage('🔥 Elite Club Unlocked — 10 clicks!');
+      eliteGlow();
+      logoClicks = 0;
+    }
+    clearTimeout(logoClickTimer);
+    logoClickTimer = setTimeout(()=> { logoClicks = 0; }, 1200);
+  });
+}
+
+/* long-press (Noor Mode) preserved but no UI hint */
+let logoPressTimer = null;
+logoEl.addEventListener('touchstart', e => { logoPressTimer = setTimeout(()=>{ setNoorTheme(); flashMessage('🕯️ Noor Mode'); }, 700); }, {passive:true});
+logoEl.addEventListener('touchend', e => { clearTimeout(logoPressTimer); }, {passive:true});
+logoEl.addEventListener('mousedown', e => { logoPressTimer = setTimeout(()=>{ setNoorTheme(); flashMessage('🕯️ Noor Mode'); }, 800); });
+logoEl.addEventListener('mouseup', e => { clearTimeout(logoPressTimer); });
+
+/* ---------- Small helpers ---------- */
+function flashMessage(text, timeout=2200){
+  const el = document.createElement('div');
+  el.textContent = text;
+  el.style.position = 'fixed';
+  el.style.left = '50%';
+  el.style.transform = 'translateX(-50%)';
+  el.style.bottom = '12%';
+  el.style.zIndex = 14000;
+  el.style.background = 'linear-gradient(90deg, rgba(255,255,255,0.06), rgba(0,0,0,0.15))';
+  el.style.padding = '12px 18px';
+  el.style.borderRadius = '12px';
+  el.style.border = '1px solid rgba(255,255,255,0.06)';
+  el.style.boxShadow = '0 12px 40px rgba(0,0,0,0.6)';
+  el.style.fontWeight = '800';
+  document.body.appendChild(el);
+  setTimeout(()=>{ el.style.transition = 'opacity .5s'; el.style.opacity = '0'; setTimeout(()=> el.remove(), 600); }, timeout);
+}
+function eliteGlow(){
+  const logo = document.getElementById('logoTitle');
+  if(!logo) return;
+  const prev = getComputedStyle(logo).textShadow;
+  // Using Web Animations API to animate text-shadow (some browsers will ignore; it's fine)
+  logo.animate([{ textShadow: prev }, { textShadow: `0 0 28px #FFD700, 0 0 58px #FF8C00` }], { duration: 1200, fill: 'forwards' });
+  activateTinyConfetti();
+}
+function activateTinyConfetti(){
+  if(prefersReducedMotion) return;
+  for(let i=0;i<28;i++){
+    const c = document.createElement('div');
+    c.style.position='fixed'; c.style.left = Math.random()*100 + '%'; c.style.top='20%';
+    c.style.width='8px'; c.style.height='8px'; c.style.borderRadius='2px'; c.style.zIndex=11000;
+    c.style.background = '#'+Math.floor(Math.random()*16777215).toString(16); c.style.opacity=0.95;
+    c.style.transform = 'translateY(0)'; c.style.transition = 'transform 1.4s cubic-bezier(.1,.7,.2,1), opacity 1.4s';
+    document.body.appendChild(c);
+    requestAnimationFrame(()=> c.style.transform = `translateY(${200+Math.random()*220}px) rotate(${Math.random()*160}deg)`);
+    setTimeout(()=> c.style.opacity=0, 1300);
+    setTimeout(()=> c.remove(), 1800);
+  }
+}
+
+/* ---------- Finale (day >= 365) & THE END (day >= 400) ---------- */
+const finaleOverlay = document.getElementById('finaleOverlay');
+const theEndOverlay = document.getElementById('theEndOverlay');
+
+function triggerFinaleOnce(){
+  if(finaleTriggered) return;
+  finaleTriggered = true;
+  showFinale();
+}
+
+function showFinale(){
+  if(!finaleOverlay) return;
+  finaleOverlay.classList.add('show');
+  finaleOverlay.setAttribute('aria-hidden','false');
+  const logo = document.getElementById('finaleLogo');
+  if(logo){ logo.style.transform = 'scale(.7)'; logo.style.opacity = '0'; setTimeout(()=>{ logo.style.transition = 'transform 900ms cubic-bezier(.2,.9,.2,1), opacity 600ms ease'; logo.style.transform = 'scale(1.04)'; logo.style.opacity = '1'; }, 50); }
+
+  confettiExplosion(true);
+  document.documentElement.style.setProperty('--accent', '#FFD700');
+  recolorParticles('#FFD700','#FFD700');
+
+  // allow close on click or ESC
+  function closeFn(){
+    finaleOverlay.classList.remove('show'); finaleOverlay.setAttribute('aria-hidden','true');
+    document.removeEventListener('click', closeFn);
+    document.removeEventListener('keydown', keyHandler);
+  }
+  function keyHandler(e){ if(e.key === 'Escape') closeFn(); }
+  document.addEventListener('click', closeFn);
+  document.addEventListener('keydown', keyHandler);
+}
+
+function showTheEnd(){
+  if(theEndShown) return;
+  theEndShown = true;
+  // fade out main UI and show THE END overlay
+  const app = document.querySelector('.app');
+  if(app){
+    app.style.transition = 'opacity 900ms ease';
+    app.style.opacity = '0';
+    setTimeout(()=> {
+      if(app) app.style.display = 'none';
+      if(theEndOverlay) { theEndOverlay.classList.add('show'); theEndOverlay.setAttribute('aria-hidden','false'); }
+      confettiExplosion(true);
+    }, 1000);
+  } else {
+    if(theEndOverlay) { theEndOverlay.classList.add('show'); theEndOverlay.setAttribute('aria-hidden','false'); }
+  }
+}
+
+/* ---------- Startup tasks ---------- */
+createParticles();
+updateDayDisplay();
+applyThemeForToday();
+resizeCodex();
+
+/* refresh logic at midnight to update day/holiday */
+(function scheduleMidnightUpdate(){
+  const now = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 8);
+  setTimeout(()=> {
+    updateDayDisplay();
+    applyThemeForToday();
+    scheduleMidnightUpdate();
+  }, next - now);
+})();
+
+/* window resize handling (recreate particles & resize codex canvas) */
+let resizeTimer;
+window.addEventListener('resize', ()=> {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(()=> {
+    createParticles();
+    applyThemeForToday();
+    resizeCodex();
+  }, 240);
+}, { passive: true });
+
+/* Expose debugging helpers in console (optional) */
+window.openCodex = openCodex;
+window.closeCodex = closeCodex;
+window.showFinale = showFinale;
+window.showTheEnd = showTheEnd;
+window.activateMatrix = function(){ console.warn('Matrix debug available via activateMatrix()'); };
+
+/* Prevent accidental repeated spawn: we don't attach global click->confetti anywhere.
+   Confetti/lego only trigger via:
+   - codex close (once)
+   - final events (once)
+   - explicit debug calls.
+*/
+
+/* End of big JS */
+</script>
+</body>
+</html>
