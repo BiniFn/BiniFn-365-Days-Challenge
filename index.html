@@ -157,6 +157,20 @@ img, svg, canvas {
 #audioControls.show-volume input[type="range"]{ opacity:1; width:120px; margin-right:8px; pointer-events: auto; }
 @media (max-width:480px){ #audioControls.show-volume input[type="range"]{ width:88px; } }
 
+/* debug & file picker UI near audio controls - themed to match site variables */
+#audioDebug{
+  position: fixed; right: 12px; top: 68px; z-index:14001;
+  color: var(--text); font-size: 0.85rem; max-width:240px; text-align:right;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.26));
+  padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.04);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+}
+#audioChooseBtn{
+  position: fixed; right: 12px; top: 112px; z-index:14002; display:none;
+  padding:8px 10px; border-radius:10px; background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(0,0,0,0.12));
+  color: var(--text); border:1px solid var(--accent); cursor:pointer; font-weight:700;
+}
+
 .header {
   display: flex;
   flex-direction: column;
@@ -547,6 +561,10 @@ img, svg, canvas {
     <button id="audioToggle" aria-pressed="false" aria-label="Play background music">🔈</button>
     <input id="audioVolume" type="range" min="0" max="1" step="0.01" value="0.8" aria-label="Background music volume" />
   </div>
+  <!-- Debug/status area for audio and a local-file fallback -->
+  <div id="audioDebug" aria-live="polite" role="status">Audio: checking...</div>
+  <button id="audioChooseBtn" style="display:none">Choose local audio…</button>
+  <input id="audioFilePicker" type="file" accept="audio/*" style="display:none" />
 
   <!-- Main app -->
   <div class="app" role="application" aria-label="BiniFn challenge app">
@@ -1337,35 +1355,111 @@ window.activateMatrix = function(){ console.warn('Matrix debug available via act
   const toggle = document.getElementById('audioToggle');
   const vol = document.getElementById('audioVolume');
   const nextBtn = document.getElementById('nextBtn');
+  const debug = document.getElementById('audioDebug');
+  const chooseBtn = document.getElementById('audioChooseBtn');
+  const filePicker = document.getElementById('audioFilePicker');
 
-  if(!audio || !toggle) return;
+  if(!audio || !toggle || !debug) return;
 
-  // restore saved preference (optional)
+  function setDebug(msg, isError=false){
+    debug.textContent = msg;
+    // use themed colors: normal messages use --text, errors use --accent
+    try{
+      debug.style.color = isError ? 'var(--accent)' : 'var(--text)';
+    }catch(e){
+      // fallback
+      debug.style.color = isError ? '#ff9999' : '';
+    }
+  }
+
+  // candidate paths to try (relative to the page). GitHub Pages often publishes site at /<repo>/ so ../Assets is commonly correct
+  const candidates = [
+    '../Assets/song.mp3',
+    './Assets/song.mp3',
+    'Assets/song.mp3',
+    '/Assets/song.mp3'
+  ];
+
+  // If the audio already has a src, attempt to verify it first.
+  async function verifyCurrentOrFind(){
+    const cur = audio.getAttribute('src');
+    if(cur){
+      try{
+        const ok = await probeUrl(cur);
+        if(ok){ setDebug('Audio found at: ' + cur); return cur; }
+      }catch(e){}
+    }
+
+    for(const p of candidates){
+      try{
+        const ok = await probeUrl(p);
+        if(ok){ setDebug('Audio found at: ' + p); return p; }
+      }catch(e){ /* ignore */ }
+    }
+    return null;
+  }
+
+  // probe using HEAD then fallback to GET if needed
+  async function probeUrl(url){
+    try{
+      const resp = await fetch(url, { method: 'HEAD', cache: 'no-store' });
+      return resp && resp.ok;
+    }catch(e){
+      // some servers may not allow HEAD; try GET without downloading body
+      try{
+        const resp = await fetch(url, { method: 'GET', cache: 'no-store' });
+        return resp && resp.ok;
+      }catch(err){
+        return false;
+      }
+    }
+  }
+
+  // initialize audio source (async)
+  (async function initAudio(){
+    setDebug('Checking audio asset…');
+    const found = await verifyCurrentOrFind();
+    if(found){
+      // set resolved src and let rest of wiring handle playback
+      if(audio.getAttribute('src') !== found){ audio.setAttribute('src', found); }
+      try{ await audio.load(); }catch(e){}
+      setDebug('Ready — press Enter or the audio button to start');
+    } else {
+      setDebug('Audio file not found. Click "Choose local audio…" to pick a file for testing.', true);
+      // show the local-file fallback button
+      chooseBtn.style.display = 'inline-block';
+    }
+  })();
+
+  // wire choose button -> file picker fallback
+  chooseBtn.addEventListener('click', ()=> filePicker.click());
+  filePicker.addEventListener('change', (e)=>{
+    const f = e.target.files && e.target.files[0];
+    if(!f) return;
+    const url = URL.createObjectURL(f);
+    audio.src = url;
+    audio.load();
+    audio.play().then(()=> { toggle.textContent = '🔊'; toggle.setAttribute('aria-pressed','true'); setDebug('Playing selected file'); }).catch((err)=>{ setDebug('Selected file loaded but playback blocked (click to start)', true); console.warn(err); });
+  });
+
+  // restore saved preference (volume & playback state)
   const saved = localStorage.getItem('bgAudioPlaying') === '1';
   const savedVol = parseFloat(localStorage.getItem('bgAudioVolume'));
-  if(!isNaN(savedVol) && vol){
-    vol.value = String(savedVol);
-    audio.volume = savedVol;
-  } else if(vol){
-    // set default volume on first load
-    audio.volume = parseFloat(vol.value || 0.8);
-  }
+  if(!isNaN(savedVol) && vol){ vol.value = String(savedVol); audio.volume = savedVol; }
+  else if(vol){ audio.volume = parseFloat(vol.value || 0.8); }
+
   if(saved){
-    audio.play().then(()=>{ toggle.textContent = '🔊'; toggle.setAttribute('aria-pressed','true'); }).catch(()=>{});
+    // attempt to play; may still be blocked until user gesture
+    audio.play().then(()=>{ toggle.textContent = '🔊'; toggle.setAttribute('aria-pressed','true'); setDebug('Playing (restored)'); }).catch(()=>{ setDebug('Playback restored but blocked until user gesture'); });
   }
 
   // start playback on the Enter button (user gesture)
-  if(nextBtn){
-    nextBtn.addEventListener('click', ()=> {
-      audio.play().catch(()=>{});
-    });
-  }
+  if(nextBtn){ nextBtn.addEventListener('click', ()=> { audio.play().catch((e)=>{ setDebug('Playback blocked — tap audio button', true); }); }); }
 
-  // play on any first interaction (tap/click) for mobile users
+  // attempt play on any first interaction (tap/click) for mobile users
   function tryPlayOnFirstInteraction(){
     function handler(){
       audio.play().catch(()=>{});
-      // remove listeners after first attempt
       window.removeEventListener('touchstart', handler, {passive:true});
       window.removeEventListener('click', handler);
     }
@@ -1374,56 +1468,55 @@ window.activateMatrix = function(){ console.warn('Matrix debug available via act
   }
   tryPlayOnFirstInteraction();
 
-  // volume slider handling
+  // volume slider handling (make robust for touch/pointer devices)
   if(vol){
-    // ensure correct range display
-    vol.addEventListener('input', (e)=>{
-      const v = parseFloat(e.target.value);
+    const setVolumeFromInput = (val)=>{
+      const v = parseFloat(val);
       audio.volume = isNaN(v) ? 0.8 : v;
       localStorage.setItem('bgAudioVolume', String(audio.volume));
-      // if user drags to zero, show muted icon
       if(audio.volume === 0){ toggle.textContent = '🔇'; }
       else if(!audio.paused) { toggle.textContent = '🔊'; }
       else { toggle.textContent = '🔈'; }
-    });
+      setDebug('Ready — volume: ' + Math.round(audio.volume * 100) + '%');
+    };
+
+    vol.addEventListener('input', (e)=> setVolumeFromInput(e.target.value));
+    vol.addEventListener('change', (e)=> setVolumeFromInput(e.target.value));
+    // pointer/touch move support for some mobile browsers
+    vol.addEventListener('pointermove', (e)=> { if(e.buttons) setVolumeFromInput(e.target.value); });
+    vol.addEventListener('touchmove', (e)=> { setVolumeFromInput(e.target.value); }, {passive:true});
   }
 
   // show/hide volume slider when user interacts with the toggle
   const controls = document.getElementById('audioControls');
   let volumeHideTimer = null;
-  function showVolumeTemporary(ms = 3500){
-    if(!controls) return;
-    controls.classList.add('show-volume');
-    if(volumeHideTimer) clearTimeout(volumeHideTimer);
-    volumeHideTimer = setTimeout(()=>{ controls.classList.remove('show-volume'); volumeHideTimer = null; }, ms);
-  }
+  function showVolumeTemporary(ms = 3500){ if(!controls) return; controls.classList.add('show-volume'); if(volumeHideTimer) clearTimeout(volumeHideTimer); volumeHideTimer = setTimeout(()=>{ controls.classList.remove('show-volume'); volumeHideTimer = null; }, ms); }
 
-  // toggle button
+  // toggle button (play/pause)
   toggle.addEventListener('click', async ()=>{
-    // reveal slider immediately when button pressed
     showVolumeTemporary();
     try{
       if(audio.paused){
         await audio.play();
-        toggle.textContent = '🔊';
-        toggle.setAttribute('aria-pressed','true');
-        localStorage.setItem('bgAudioPlaying','1');
+        toggle.textContent = '🔊'; toggle.setAttribute('aria-pressed','true'); localStorage.setItem('bgAudioPlaying','1'); setDebug('Playing');
       } else {
-        audio.pause();
-        toggle.textContent = '🔈';
-        toggle.setAttribute('aria-pressed','false');
-        localStorage.setItem('bgAudioPlaying','0');
+        audio.pause(); toggle.textContent = '🔈'; toggle.setAttribute('aria-pressed','false'); localStorage.setItem('bgAudioPlaying','0'); setDebug('Paused');
       }
     }catch(e){
-      console.log('Audio playback blocked or failed', e);
+      console.warn('Audio playback blocked or failed', e);
+      setDebug('Playback blocked by browser — tap Enter or the audio button once to allow sound', true);
     }
   });
 
   // keep slider visible while user is dragging it
-  if(vol){
-    vol.addEventListener('pointerdown', ()=>{ if(volumeHideTimer) clearTimeout(volumeHideTimer); controls.classList.add('show-volume'); });
-    vol.addEventListener('pointerup', ()=>{ showVolumeTemporary(3000); });
-  }
+  if(vol){ vol.addEventListener('pointerdown', ()=>{ if(volumeHideTimer) clearTimeout(volumeHideTimer); controls.classList.add('show-volume'); }); vol.addEventListener('pointerup', ()=>{ showVolumeTemporary(3000); }); }
+
+  // surface load errors on the audio element
+  audio.addEventListener('error', ()=>{
+    setDebug('Audio failed to load from configured path. Try the "Choose local audio…" button or fix the asset path.', true);
+    chooseBtn.style.display = 'inline-block';
+  });
+
 })();
 </script>
 </body>
