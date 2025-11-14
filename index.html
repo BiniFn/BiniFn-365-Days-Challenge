@@ -143,9 +143,11 @@ img, svg, canvas {
 }
 
 #audioControls { position: fixed; right: 12px; top: 12px; display: flex; gap:10px; align-items:center; z-index:14000; /* place slider to the left of the button so it expands left */ flex-direction: row-reverse; }
-#audioControls input[type="range"]{ width:120px; appearance:none; height:6px; background: rgba(255,255,255,0.08); border-radius:999px; }
-#audioControls input[type="range"]::-webkit-slider-thumb{ -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:var(--accent); box-shadow:0 4px 12px rgba(0,0,0,0.4); }
-#audioControls input[type="range"]::-moz-range-thumb{ width:16px; height:16px; border-radius:50%; background:var(--accent); }
+#audioControls input[type="range"]{ width:120px; -webkit-appearance:none; appearance:none; height:6px; background: rgba(255,255,255,0.08); border-radius:999px; accent-color: var(--accent); }
+#audioControls input[type="range"]::-webkit-slider-runnable-track{ height:6px; background: rgba(255,255,255,0.08); border-radius:999px; }
+#audioControls input[type="range"]::-webkit-slider-thumb{ -webkit-appearance:none; width:12px; height:12px; border-radius:50%; background:var(--accent); box-shadow:0 4px 10px rgba(0,0,0,0.4); margin-top: -3px; }
+#audioControls input[type="range"]::-moz-range-track{ height:6px; background: rgba(255,255,255,0.08); border-radius:999px; }
+#audioControls input[type="range"]::-moz-range-thumb{ width:12px; height:12px; border-radius:50%; background:var(--accent); }
 
 @media (max-width:480px){
   #audioControls input[type="range"]{ width:88px; }
@@ -160,7 +162,7 @@ img, svg, canvas {
 /* debug & file picker UI near audio controls - themed to match site variables */
 #audioDebug{
   position: fixed; right: 12px; top: 68px; z-index:14001;
-  color: var(--text); font-size: 0.85rem; max-width:240px; text-align:right;
+  color: black; font-size: 1px; max-width:240px; text-align:right;
   background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.26));
   padding:8px 10px; border-radius:10px; border:1px solid rgba(255,255,255,0.04);
   box-shadow: 0 6px 20px rgba(0,0,0,0.45);
@@ -169,6 +171,14 @@ img, svg, canvas {
   position: fixed; right: 12px; top: 112px; z-index:14002; display:none;
   padding:8px 10px; border-radius:10px; background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(0,0,0,0.12));
   color: var(--text); border:1px solid var(--accent); cursor:pointer; font-weight:700;
+}
+
+@media (max-width: 600px) {
+  :root {
+    --ui-padding: 10px;
+  }
+  /* Keep audio controls in their desktop position (top-right) but allow other mobile layout changes below */
+  /* debug / choose button keep their default positions so they don't overlap the content */
 }
 
 .header {
@@ -562,39 +572,24 @@ img, svg, canvas {
     <input id="audioVolume" type="range" min="0" max="1" step="0.01" value="0.8" aria-label="Background music volume" />
   </div>
 <!-- Debug/status area for audio running in the background -->
-<div id="audioDebug" aria-live="polite" role="status" style="font-size:1px; color:black;">
-    Audio: initializing...
+<div id="audioDebug" aria-live="polite" role="status">
+  Audio: initializing...
 </div>
-
-<!-- Hidden audio element (background) -->
-<audio id="bgAudio" preload="auto"></audio>
-
+<!-- Quick audio snippet inserted per request: uses the existing #bgAudio element -->
 <script>
-// Put your audio URL here:
+// Put your audio URL here (replace with a real file path or URL)
 const audioURL = "your-audio-url-goes-here.mp3";
-
-const audio = document.getElementById("bgAudio");
-const debug = document.getElementById("audioDebug");
-
-audio.src = audioURL;
-
-// Auto-play attempts (works only if the page has some user action)
-audio.addEventListener("canplaythrough", () => {
-    audio.play().then(() => {
-        debug.textContent = "Playing in background.";
-    }).catch(() => {
-        debug.textContent = "Waiting for user interaction...";
-    });
-});
-
-// Optional: start when user clicks anywhere (bypasses autoplay restrictions)
-document.addEventListener("click", () => {
-    audio.play().then(() => {
-        debug.textContent = "Playing in background.";
-    }).catch(err => {
-        debug.textContent = "Error: " + err;
-    });
-});
+const _dbgAudio = document.getElementById('audioDebug');
+const _audioEl = document.getElementById('bgAudio');
+if(_audioEl){
+  try{ _audioEl.src = audioURL; }catch(e){}
+  _audioEl.addEventListener('canplaythrough', ()=>{
+    _audioEl.play().then(()=>{ _dbgAudio.textContent = 'Playing in background.'; }).catch(()=>{ _dbgAudio.textContent = 'Waiting for user interaction...'; });
+  });
+  document.addEventListener('click', ()=>{
+    _audioEl.play().then(()=>{ _dbgAudio.textContent = 'Playing in background.'; }).catch(err=>{ _dbgAudio.textContent = 'Error: ' + (err && err.message ? err.message : String(err)); });
+  });
+}
 </script>
 
 
@@ -1501,17 +1496,20 @@ window.activateMatrix = function(){ console.warn('Matrix debug available via act
   tryPlayOnFirstInteraction();
 
   // volume slider handling (make robust for touch/pointer devices)
+  // inline/mobile slider (syncs with top-right slider)
   if(vol){
     const setVolumeFromInput = (val)=>{
       const v = parseFloat(val);
-      audio.volume = isNaN(v) ? 0.8 : v;
+      const newVol = isNaN(v) ? 0.8 : v;
+      audio.volume = newVol;
+      // remember the user's last non-zero volume for unmute
+      if(newVol > 0) localStorage.setItem('bgAudioLastVolume', String(newVol));
       localStorage.setItem('bgAudioVolume', String(audio.volume));
       if(audio.volume === 0){ toggle.textContent = '🔇'; }
       else if(!audio.paused) { toggle.textContent = '🔊'; }
       else { toggle.textContent = '🔈'; }
       setDebug('Ready — volume: ' + Math.round(audio.volume * 100) + '%');
     };
-
     vol.addEventListener('input', (e)=> setVolumeFromInput(e.target.value));
     vol.addEventListener('change', (e)=> setVolumeFromInput(e.target.value));
     // pointer/touch move support for some mobile browsers
@@ -1524,10 +1522,23 @@ window.activateMatrix = function(){ console.warn('Matrix debug available via act
   let volumeHideTimer = null;
   function showVolumeTemporary(ms = 3500){ if(!controls) return; controls.classList.add('show-volume'); if(volumeHideTimer) clearTimeout(volumeHideTimer); volumeHideTimer = setTimeout(()=>{ controls.classList.remove('show-volume'); volumeHideTimer = null; }, ms); }
 
-  // toggle button (play/pause)
+  // toggle button behavior:
+  // - If the slider is at 0 (muted), clicking the button will restore last non-zero volume and play (acts as unmute)
+  // - Otherwise the button acts as play/pause (does not change volume)
   toggle.addEventListener('click', async ()=>{
     showVolumeTemporary();
     try{
+      const lastVol = parseFloat(localStorage.getItem('bgAudioLastVolume')) || 0.8;
+      if(audio.volume === 0){
+        // unmute to last volume and start playback
+        audio.volume = lastVol;
+        if(vol) vol.value = String(audio.volume);
+        await audio.play();
+        toggle.textContent = '🔊'; toggle.setAttribute('aria-pressed','true'); localStorage.setItem('bgAudioPlaying','1'); setDebug('Unmuted — volume: ' + Math.round(audio.volume*100) + '%');
+        return;
+      }
+
+      // normal play/pause toggle (preserve volume)
       if(audio.paused){
         await audio.play();
         toggle.textContent = '🔊'; toggle.setAttribute('aria-pressed','true'); localStorage.setItem('bgAudioPlaying','1'); setDebug('Playing');
