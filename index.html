@@ -561,10 +561,42 @@ img, svg, canvas {
     <button id="audioToggle" aria-pressed="false" aria-label="Play background music">🔈</button>
     <input id="audioVolume" type="range" min="0" max="1" step="0.01" value="0.8" aria-label="Background music volume" />
   </div>
-  <!-- Debug/status area for audio and a local-file fallback -->
-  <div id="audioDebug" aria-live="polite" role="status">Audio: checking...</div>
-  <button id="audioChooseBtn" style="display:none">Choose local audio…</button>
-  <input id="audioFilePicker" type="file" accept="audio/*" style="display:none" />
+<!-- Debug/status area for audio running in the background -->
+<div id="audioDebug" aria-live="polite" role="status" style="font-size:1px; color:black;">
+    Audio: initializing...
+</div>
+
+<!-- Hidden audio element (background) -->
+<audio id="bgAudio" preload="auto"></audio>
+
+<script>
+// Put your audio URL here:
+const audioURL = "your-audio-url-goes-here.mp3";
+
+const audio = document.getElementById("bgAudio");
+const debug = document.getElementById("audioDebug");
+
+audio.src = audioURL;
+
+// Auto-play attempts (works only if the page has some user action)
+audio.addEventListener("canplaythrough", () => {
+    audio.play().then(() => {
+        debug.textContent = "Playing in background.";
+    }).catch(() => {
+        debug.textContent = "Waiting for user interaction...";
+    });
+});
+
+// Optional: start when user clicks anywhere (bypasses autoplay restrictions)
+document.addEventListener("click", () => {
+    audio.play().then(() => {
+        debug.textContent = "Playing in background.";
+    }).catch(err => {
+        debug.textContent = "Error: " + err;
+    });
+});
+</script>
+
 
   <!-- Main app -->
   <div class="app" role="application" aria-label="BiniFn challenge app">
